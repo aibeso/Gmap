@@ -1,6 +1,5 @@
 <!DOCTYPE HTML>
-	<!--  2测量-->
-	<!--  3图层切换-->
+<html>
 <head>
     <title>Google Earth</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -19,16 +18,19 @@
             position: absolute;
         }
 
-        #mouse-position { /* 鼠标位置控件层样式设置 */
+        /* 鼠标位置控件层样式设置 */
+        #mouse-position {
             float: right;
             position: absolute;
-            left: 50%;
+            right: 20px;
             bottom: 10px;
             width: 140px;
             height: 21px;
             z-index: 2000;
         }
-        .custom-mouse-position { /* 鼠标位置信息自定义样式设置 */
+
+        /* 鼠标位置信息自定义样式设置 */
+        .custom-mouse-position {
             margin: 1px;
             padding: 0;
             padding-top: 3px;
@@ -42,8 +44,8 @@
             border: none;
         }
 
-        div .btn_group { /* 图层切换 */
-
+        /* 图层切换 */
+        div .btn-group {
             top: 0.5em;
             right: 0.5em;
             position: absolute;
@@ -52,7 +54,18 @@
             padding: 2px;
         }
 
-        .btn_group .layer_btn {
+        /* 测量类型切换 */
+        .type-draw {
+            top: 5em;
+            right: 0.5em;
+            position: absolute;
+            background-color: rgba(255,255,255,.4);
+            border-radius: 4px;
+            padding: 2px;
+        }
+
+        .type-draw button,
+        .btn-group .layer-btn {
             display: block;
             margin: 1px;
             padding: 0;
@@ -67,26 +80,62 @@
             border-radius: 2px;
         }
 
-        .btn_group .layer_btn:hover{
+        .type-draw button:hover,
+        .btn-group .layer-btn:hover{
             background-color: rgba(0,60,136,0.8);
         }
 
-        #layer_s {
-            display: none;
+        /*测量功能测量值显示样式*/
+        .tooltip-measure {
+            opacity: 1;
+            font-weight: bold;
         }
 
+        .tooltip-measure{
+            color: #ff1000;
+        }
+
+        .tooltip-static {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #ff2211;
+            font-weight: bold;
+            border: 1px solid #ff1000;
+            padding: 0 2px;
+        }
+
+        .tooltip-measure:before,
+        .tooltip-static:before {
+            border-top: 6px solid rgba(255, 102, 34, 0.8);
+            border-right: 6px solid transparent;
+            border-left: 6px solid transparent;
+            content: "";
+            position: absolute;
+            bottom: -6px;
+            margin-left: -7px;
+            left: 50%;
+        }
+
+        .tooltip-static:before {
+            border-top-color: #ff6622;
+        }
     </style>
 </head>
 <body>
-    <div id="mapCon"></div>
+<div id="mapCon"></div>
+<div>
     <div id="mouse-position"></div>
-    <div>
-        <div class="btn_group">
-            <button class="layer_btn" id="layer_m">2D</button>
-            <button class="layer_btn" id="layer_s">卫星</button>
-            <button class="layer_btn" id="layer_h">路网</button>
-        </div>
+    <div class="btn-group">
+        <button class="layer-btn" id="layer-m">2D</button>
+        <button class="layer-btn" id="layer-s" style="display: none">卫星</button>
+        <button class="layer-btn" id="layer-h">路网</button>
     </div>
+    <div class="type-draw">
+        <button class="type-tooltip" id="type-tooltip">测量</button>
+        <button class="type-length" id="type-length" style="display: none">长度</button>
+        <button class="type-area" id="type-area" style="display: none">面积</button>
+        <button class="type-clear" id="type-clear" style="display: none">清除</button>
+    </div>
+</div>
 </body>
 <script type="text/javascript">
     // 实例化比例尺控件（ScaleLine）
@@ -103,13 +152,12 @@
         undefinedHTML: '0_0' //未定义坐标的标记
     });
 
-
     // mt: Google地图使用了四个服务地址，即 http://mt(0-3).google.cn/......，
-        // 地图：http://mt2.google.cn/vt/lyrs=m@&hl=zh-CN&gl=cn&x=...
-        // 影像底图：http://mt3.google.cn/vt/lyrs=s@110&hl=zh-CN&gl=cn&x=...
-        // 影像的叠加：http://mt1.google.cn/vt/imgtp=png32&lyrs=h&hl=zh-CN&gl=cn&x=...
+    // 地图：http://mt2.google.cn/vt/lyrs=m@&hl=zh-CN&gl=cn&x=...
+    // 影像底图：http://mt3.google.cn/vt/lyrs=s@110&hl=zh-CN&gl=cn&x=...
+    // 影像的叠加：http://mt1.google.cn/vt/imgtp=png32&lyrs=h&hl=zh-CN&gl=cn&x=...
     // lyrs:  表示的是图层类型，即瓦片类型，具体含义如下：
-        // m：路线图 ​t：地形图 ​p：带标签的地形图 ​s：卫星图 ​y：带标签的卫星图 ​h：标签层（路名、地名等）
+    // m：路线图 ​t：地形图 ​p：带标签的地形图 ​s：卫星图 ​y：带标签的卫星图 ​h：标签层（路名、地名等）
 
     //初始化地图图层
     var gMap_t = new ol.layer.Tile({
@@ -168,23 +216,15 @@
         }
     }
 
-    // 设置显示中心
-    function setCenter(x, y) {
-        var view = map.getView(); //获取地图视图
-        var py = ol.proj.fromLonLat([x, y]);
-        view.setCenter(py); //平移地图
-        view.setZoom(12);
-    }
-    // setCenter(108.37, 22.78)
-
-    $("#layer_h").click(function () {
+    // 显示和隐藏路网标记层
+    $("#layer-h").click(function () {
         var Layers = map.getLayers().getArray();
         var layerL = Layers.length;
         if(layerL == 1){ // 只有一个图层，说明没有路网层，进行显示处理
             map.addLayer(LayerArr[3]);
         }else { // 隐藏路网层
             clearLayer(); //清空底图
-            var display = $('#layer_s').css('display');
+            var display = $('#layer-s').css('display');
             if (display == 'none') { // 显示卫星图层按钮被隐藏，说明底图为卫星图层
                 map.addLayer(LayerArr[2]);
             }else {
@@ -194,9 +234,9 @@
     });
 
     // 显示卫星地图
-    $("#layer_s").click(function () {
+    $("#layer-s").click(function () {
         $(this).hide();
-        $("#layer_m").show();
+        $("#layer-m").show();
         clearLayer();
         map.addLayer(LayerArr[2]);
         map.addLayer(LayerArr[3]);
@@ -204,14 +244,192 @@
     });
 
     // 显示2D地图
-    $("#layer_m").click(function () {
+    $("#layer-m").click(function () {
         $(this).hide();
-        $("#layer_s").show();
+        $("#layer-s").show();
         clearLayer();
         map.addLayer(LayerArr[1]);
-        map.addLayer(LayerArr[3]);
     });
 
+    //############################## 测量功能 #############################
 
+    var sketch; // 当前绘制的要素 type {ol.Feature}
+    var measureTooltipElement; // 测量显示 dom
+    var measureTooltip; // 测量值显示 dom
+    var type = 'LineString'; // 测量的类型  'Polygon' || 'LineString'
+    var draw; // 绘制对象
+
+    //实例化一个矢量图层Vector作为绘制层
+    var source = new ol.source.Vector(); //图层数据源
+    var vector = new ol.layer.Vector({
+        source: source,
+        style: new ol.style.Style({ // 绘制图层样式
+            fill: new ol.style.Fill({
+                color: 'rgba(255, 255, 255, 0.2)' //填充颜色
+            }),
+            stroke: new ol.style.Stroke({
+                color: '#FF6633', //边框颜色
+                width: 3 // 边框宽度
+            }),
+            image: new ol.style.Circle({
+                radius: 7,
+                fill: new ol.style.Fill({
+                    color: '#FF6633'
+                })
+            })
+        })
+    });
+
+    //将绘制层添加到地图容器中
+    map.addLayer(vector);
+
+    //加载交互绘制控件
+    function addInteraction() {
+        draw = new ol.interaction.Draw({
+            source: source,//测量绘制层数据源
+            type:  (type),  //几何图形类型
+            style: new ol.style.Style({//绘制几何图形的样式
+                fill: new ol.style.Fill({
+                    color: 'rgba(255, 255, 255, 0.1)'
+                }),
+                stroke: new ol.style.Stroke({  // 线样式
+                    color: 'rgba(255,85,34,0.8)',
+                    width: 3
+                }),
+                image: new ol.style.Circle({ // 鼠标点的样式
+                    radius: 3,
+                    stroke: new ol.style.Stroke({
+                        color: 'rgba(255,85,34,0.9)',
+                        width: 1 // 边框宽度
+                    }),
+                    fill: new ol.style.Fill({
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    })
+                })
+            })
+        });
+
+        map.addInteraction(draw);
+        createMeasureTooltip(); //创建显示测量值dom
+        var listener;
+
+        //绑定开始绘制的事件
+        draw.on('drawstart', function (evt) {
+            sketch = evt.feature; //绘制的要素
+            var tooltipCoord = evt.coordinate; // 绘制的坐标
+            //绑定change事件，根据绘制几何类型得到测量长度值或面积值，并将其设置到测量值dom
+            listener = sketch.getGeometry().on('change', function (evt) {
+                var geom = evt.target; // 绘制几何要素
+                var output;
+                if (geom instanceof ol.geom.Polygon) {
+                    output = formatArea((geom)); /** @type {ol.geom.Polygon} */ // 面积值
+                    tooltipCoord = geom.getInteriorPoint().getCoordinates(); // 坐标
+                } else if (geom instanceof ol.geom.LineString) {
+                    output = formatLength( (geom)); /** @type {ol.geom.LineString} */ //长度值
+                    tooltipCoord = geom.getLastCoordinate(); // 坐标
+                }
+                measureTooltipElement.innerHTML = output; // 将测量值设置到测量值dom
+                measureTooltip.setPosition(tooltipCoord); // 设置显示测量值dom的显示位置
+            });
+        }, this);
+
+        //绑定结束绘制的事件
+        draw.on('drawend', function (evt) {
+            measureTooltipElement.className = 'tooltip tooltip-static'; // 设置测量值dom的样式
+            measureTooltip.setOffset([0, -7]);
+            sketch = null; // 置空当前绘制的要素对象
+            measureTooltipElement = null; // 置空测量值dom对象
+            createMeasureTooltip(); // 重新创建一个测量值dom显示结果
+            ol.Observable.unByKey(listener);
+        }, this);
+    }
+
+    // 创建一个新的测量显示dom
+    function createMeasureTooltip() {
+        if (measureTooltipElement) {
+            measureTooltipElement.parentNode.removeChild(measureTooltipElement);
+        }
+        measureTooltipElement = document.createElement('div');
+        measureTooltipElement.className = 'tooltip tooltip-measure';
+        measureTooltip = new ol.Overlay({
+            element: measureTooltipElement,
+            offset: [0, -15],
+            positioning: 'bottom-center'
+        });
+        map.addOverlay(measureTooltip);
+    }
+
+    // 计算测量长度输出
+    var formatLength = function (line) {
+        var length = Math.round(line.getLength() * 100) / 100; //直接得到线的长度
+        var output;
+        if (length > 100) {
+            output = (Math.round(length / 1000 * 100) / 100) + ' ' + 'km'; //换算成KM单位
+        } else {
+            output = (Math.round(length * 100) / 100) + ' ' + 'm'; //m为单位
+        }
+        return output;//返回线的长度
+    };
+
+    // 计算测量面积
+    var formatArea = function (polygon) {
+        var area = polygon.getArea();//直接获取多边形的面积
+        var output;
+        if (area > 10000) {
+            output = (Math.round(area / 1000000 * 100) / 100) + ' ' + 'km<sup>2</sup>'; //换算成KM单位
+        } else {
+            output = (Math.round(area * 100) / 100) + ' ' + 'm<sup>2</sup>';//m为单位
+        }
+        return output; //返回多边形的面积
+    };
+
+    // 测量功能开关
+    $(".type-tooltip").click(function () {
+        if($(this).hasClass("type-active")){
+            $(this).removeClass("type-active");
+            $(this).text("测量");
+            $(".type-length").hide();
+            $(".type-area").hide();
+            $(".type-clear").hide();
+            map.removeInteraction(draw)
+        }else{
+            $(this).addClass("type-active");
+            $(this).text("关闭");
+            $(".type-length").show();
+            $(".type-area").show();
+            $(".type-clear").show();
+            addInteraction();
+            if(type == "LineString"){
+                $(".type-length").css("background-color", "#1177FF").addClass("type-active");
+            } else {
+                $(".type-area").css("background-color", "#1177FF").addClass("type-active");
+            }
+        }
+    });
+
+    // 切换为测量长度
+    $(".type-length").click(function () {
+        $(this).css("background-color", "#1177FF").addClass("type-active");
+        $(".type-area").css("background-color", "rgba(0,60,136,.5)").removeClass("type-active");
+        type = "LineString";
+        map.removeInteraction(draw);
+        addInteraction();
+    });
+
+    // 切换为测量面积
+    $(".type-area").click(function () {
+        $(this).css("background-color", "#1177FF").addClass("type-active");
+        $(".type-length").css("background-color", "rgba(0,60,136,.5)").removeClass("type-active");
+        type = "Polygon";
+        map.removeInteraction(draw); // 移除绘制层
+        addInteraction();
+    });
+
+    // 清除测量数据
+    $(".type-clear").click(function () {
+        vector.getSource().clear();
+        $(".tooltip-static").empty();
+        $(".tooltip-static").removeClass("tooltip-static")
+    });
 </script>
 </html>
