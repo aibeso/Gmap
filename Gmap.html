@@ -211,8 +211,13 @@
     var clearLayer = function() {
         var Layers = map.getLayers().getArray();
         var layerL = Layers.length;
+        var num = 0;
         for (var i = 0; i < layerL; i++) {
-            map.removeLayer(Layers[0]); //移除图层
+            if(Layers[num].get("title") != "vector"){ // 如果是vector图层，数组索引 +1，
+                map.removeLayer(Layers[num]); //移除图层
+            }else {
+                num ++;
+            }
         }
     }
 
@@ -220,16 +225,13 @@
     $("#layer-h").click(function () {
         var Layers = map.getLayers().getArray();
         var layerL = Layers.length;
-        if(layerL == 1){ // 只有一个图层，说明没有路网层，进行显示处理
-            map.addLayer(LayerArr[3]);
-        }else { // 隐藏路网层
-            clearLayer(); //清空底图
-            var display = $('#layer-s').css('display');
-            if (display == 'none') { // 显示卫星图层按钮被隐藏，说明底图为卫星图层
-                map.addLayer(LayerArr[2]);
-            }else {
-                map.addLayer(LayerArr[1]);
+        for (var i = 0; i < layerL; i++) {
+            if(Layers[i].get("title") == "路网图层"){
+                map.removeLayer(Layers[i]); //移除图层
             }
+        }
+        if(Layers.length == layerL){
+            map.addLayer(LayerArr[3]);
         }
     });
 
@@ -262,6 +264,7 @@
     //实例化一个矢量图层Vector作为绘制层
     var source = new ol.source.Vector(); //图层数据源
     var vector = new ol.layer.Vector({
+        title:"vector",
         source: source,
         style: new ol.style.Style({ // 绘制图层样式
             fill: new ol.style.Fill({
@@ -277,7 +280,8 @@
                     color: '#FF6633'
                 })
             })
-        })
+        }),
+        zIndex:1000
     });
 
     //将绘制层添加到地图容器中
